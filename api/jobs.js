@@ -8,14 +8,42 @@ const supabase = createClient(
 export default async function handler(req, res) {
 
   // 🔐 SECRET KEY CHECK — ADD HERE
+  // 🔐 Protect ONLY POST (internal)
+if (req.method === "POST") {
   if (req.headers["x-internal-key"] !== process.env.INTERNAL_API_KEY) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+}
 
-  // Allow only POST
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+// 🚫 Allow only GET & POST
+if (!["GET", "POST"].includes(req.method)) {
+  return res.status(405).json({ error: "Method not allowed" });
+}
+  // 📥 PUBLIC GET JOBS (frontend-ready, no auth)
+if (req.method === "GET") {
+  const page = parseInt(req.query.page || "1");
+  const limit = parseInt(req.query.limit || "10");
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
+    .from("jobs")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    return res.status(500).json({ error: "Failed to fetch jobs" });
   }
+
+  return res.status(200).json({
+    success: true,
+    page,
+    limit,
+    total: count,
+    jobs: data,
+  });
+}
 
   try {
     const {
