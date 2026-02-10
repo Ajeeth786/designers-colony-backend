@@ -2,10 +2,17 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY // backend-only
+  process.env.SUPABASE_SERVICE_KEY
 );
 
 export default async function handler(req, res) {
+
+  // 🔐 SECRET KEY CHECK — ADD HERE
+  if (req.headers["x-internal-key"] !== process.env.INTERNAL_API_KEY) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // Allow only POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -56,6 +63,7 @@ export default async function handler(req, res) {
       success: true,
       job: data
     });
+
   } catch (err) {
     console.error("Unexpected error:", err);
     return res.status(500).json({ error: "Internal server error" });
